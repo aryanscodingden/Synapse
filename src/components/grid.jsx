@@ -1,26 +1,55 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGameState } from "../store/gameStore";
 
-const GRID_SIZE = 16; 
+const GRID_SIZE = 16;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function Grid() {
-    const { phase, addPlayerInput } = useGameState();
+    const phase = useGameState((s) => s.phase);
+    const flashSequence = useGameState((s) => s.flashSequence);
+    const setPhase = useGameState((s) => s.setPhase);
+    const addPlayerInput = useGameState((s) => s.addPlayerInput);
+
     const [activeNode, setActiveNode] = useState(null);
+    const [activeColor, setActiveColor] = useState("#fff");
     const [holdStart, setHoldStart] = useState(null);
 
     console.log("PHASE:", phase);
 
+    useEffect(() => {
+        if (phase !== "watch" || flashSequence.length === 0) return;
+
+        let cancelled = false;
+
+        const play = async () => {
+            for (let step of flashSequence) {
+                if (cancelled) return;
+
+                setActiveNode(step.id);
+                setActiveColor(step.color);
+
+                await sleep(300);
+                setActiveNode(null);
+                await sleep(150);
+            }
+
+            setPhase("recall");
+        };
+
+        play();
+        return () => (cancelled = true);
+    }, [phase, flashSequence, setPhase]);
+
     const handlePointerDown = (id) => {
-        console.log("Phase check (pointer down):", phase);
-        if (phase !== "recall") return; 
+        if (phase !== "recall") return;
 
         setActiveNode(id);
         setHoldStart(performance.now());
     };
 
     const handlePointerUp = (id) => {
-        console.log("Phase check (pointer up):", phase, "holdStart:", holdStart);
         if (phase !== "recall" || holdStart === null) return;
 
         const duration = performance.now() - holdStart;
@@ -50,8 +79,9 @@ export default function Grid() {
                         animate={{
                             scale: isActive ? 1.2 : 1,
                             opacity: isActive ? 1 : 0.4,
+                            backgroundColor: isActive ? activeColor : "#1a1a1a",
                             boxShadow: isActive
-                                ? "0 0 20px #ffffff"
+                                ? `0 0 20px ${activeColor}`
                                 : "0 0 0px transparent",
                         }}
                         transition={{
