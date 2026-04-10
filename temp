@@ -1,0 +1,71 @@
+import { create } from "zustand";
+
+export const useGameStore = create((set) => ({
+  // =========================
+  // 🎮 GAME STATE
+  // =========================
+
+  phase: "idle",
+
+  // Per-node memory system
+  nodesState: {},
+
+  // =========================
+  // ⚙️ ACTIONS
+  // =========================
+
+  setPhase: (phase) => set({ phase }),
+
+  /** Initialize all 16 nodes */
+  initNodes: () => {
+    const initial = {};
+
+    for (let i = 0; i < 16; i++) {
+      initial[i] = {
+        color: null,
+        phase: "idle", // idle | shown
+        matched: false,
+      };
+    }
+
+    set({ nodesState: initial });
+  },
+
+  /** First click → assign color */
+  setNodeColor: (id, color) =>
+    set((state) => ({
+      nodesState: {
+        ...state.nodesState,
+        [id]: {
+          ...state.nodesState[id],
+          color,
+          phase: "shown",
+        },
+      },
+    })),
+
+  /** Correct match */
+  markMatched: (id) =>
+    set((state) => ({
+      nodesState: {
+        ...state.nodesState,
+        [id]: {
+          ...state.nodesState[id],
+          matched: true,
+        },
+      },
+    })),
+
+  /** Wrong → reset node with new color */
+  resetNode: (id, newColor) =>
+    set((state) => ({
+      nodesState: {
+        ...state.nodesState,
+        [id]: {
+          color: newColor,
+          phase: "shown",
+          matched: false,
+        },
+      },
+    })),
+}));

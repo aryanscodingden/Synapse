@@ -3,66 +3,55 @@ import { useEffect, useState } from "react";
 import { useGameState } from "../store/gameStore";
 
 const GRID_SIZE = 16;
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function Grid() {
     const phase = useGameState((s) => s.phase);
-    const flashSequence = useGameState((s) => s.flashSequence);
+    const currentPattern = useGameState((s) => s.currentPattern);
     const setPhase = useGameState((s) => s.setPhase);
-    const addPlayerInput = useGameState((s) => s.addPlayerInput);
+    const submitRecallInput = useGameState((s) => s.submitRecallInput);
 
     const [activeNode, setActiveNode] = useState(null);
-    const [activeColor, setActiveColor] = useState("#fff");
-    const [holdStart, setHoldStart] = useState(null);
-
-    console.log("PHASE:", phase);
+    const [activeColor, setActiveColor] = useState("#4da6ff");
 
     useEffect(() => {
-        if (phase !== "watch" || flashSequence.length === 0) return;
+        if (phase !== "watch" || currentPattern.length === 0) return;
 
         let cancelled = false;
 
-        const play = async () => {
-            for (let step of flashSequence) {
+        const playPattern = async () => {
+            for (const id of currentPattern) {
                 if (cancelled) return;
 
-                setActiveNode(step.id);
-                setActiveColor(step.color);
+                setActiveNode(id);
+                setActiveColor("#4da6ff");
+                await sleep(320);
 
-                await sleep(300);
                 setActiveNode(null);
-                await sleep(150);
+                await sleep(140);
             }
 
-            setPhase("recall");
+            if (!cancelled) {
+                setPhase("recall");
+            }
         };
 
-        play();
-        return () => (cancelled = true);
-    }, [phase, flashSequence, setPhase]);
+        playPattern();
+        return () => {
+            cancelled = true;
+        };
+    }, [phase, currentPattern, setPhase]);
 
     const handlePointerDown = (id) => {
         if (phase !== "recall") return;
 
+        setActiveColor("#ffd24d");
         setActiveNode(id);
-        setHoldStart(performance.now());
-    };
+        submitRecallInput(id);
 
-    const handlePointerUp = (id) => {
-        if (phase !== "recall" || holdStart === null) return;
-
-        const duration = performance.now() - holdStart;
-        addPlayerInput({
-            id,
-            duration,
-            color: null,
-        });
-
-        console.log("INPUT:", id, duration);
-
-        setActiveNode(null);
-        setHoldStart(null);
+        setTimeout(() => {
+            setActiveNode(null);
+        }, 140);
     };
 
     return (
@@ -74,11 +63,10 @@ export default function Grid() {
                     <motion.div
                         key={id}
                         onPointerDown={() => handlePointerDown(id)}
-                        onPointerUp={() => handlePointerUp(id)}
                         className="w-16 h-16 rounded-full cursor-pointer bg-[#1a1a1a]"
                         animate={{
                             scale: isActive ? 1.2 : 1,
-                            opacity: isActive ? 1 : 0.4,
+                            opacity: isActive ? 1 : 0.45,
                             backgroundColor: isActive ? activeColor : "#1a1a1a",
                             boxShadow: isActive
                                 ? `0 0 20px ${activeColor}`

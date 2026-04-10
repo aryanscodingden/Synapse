@@ -1,68 +1,72 @@
-import { round } from "culori";
-import { mark } from "framer-motion/client";
 import { create } from "zustand";
 
-export const useGameState = create((set, get) => ({
-    mode: "solo",
-    round: 1,
+const MANUAL_PATTERNS = [
+    [0, 5, 10],
+    [3, 7, 11, 15],
+    [1, 2, 6, 10, 14],
+    [4, 8, 9, 13, 12, 0],
+];
+
+export const useGameState = create((set) => ({
     phase: "idle",
+    level: 1,
+    totalLevels: MANUAL_PATTERNS.length,
+    currentPattern: [],
+    playerSequence: [],
 
-     flashSequence: /** @type {FlashNode[]} */ ([]),
-     playerSequence: /** @type {PlayerInput[]} */ ([]),
+    setPhase: (phase) => set({ phase }),
 
-    scores: {
-        sequence: 0,
-        color: 0,
-        timing: 0,
-        final: 0,
-    },
-
-    dailyAttempted: false,
-
-    setMode: (mode) => set({mode}),
-    setPhase: (phase) => set({phase}),
-  setFlashSequence: (sequence) =>
-    set({ flashSequence: sequence }),
-
-    addPlayerInput: (input) => 
-        set((state) => ({
-            playerSequence: [...state.playerSequence, input],
-        })),
-    
-    updatePlayerColor: (index, color) => 
-        set((state) => {
-            const updated = [...state.playerSequence];
-            if (updated[index]) {
-                updated[index].color = color;
-            }
-            return {playerSequence: updated};
-        }),
-
-    setScores: (scores) => 
-        set({scores}),
-
-    nextRound: () => 
-        set((state) => ({
-            round: state.round + 1, 
-            playerSequence: [],
-            flashSequence: [],
-            phase: "idle",
-        })),
-
-    resetGame: () => 
+    startGame: () =>
         set({
-            round: 1,
-            phase: "idle",
-            flashSequence: [],
+            phase: "watch",
+            level: 1,
+            currentPattern: MANUAL_PATTERNS[0],
             playerSequence: [],
-            scores: {
-                sequence: 0, 
-                color: 0,
-                timing: 0,
-                final: 0, 
-            },
         }),
 
-    markDailyAttempt: () => 
-        set({dailyAttempted: true}),
+    retryLevel: () =>
+        set((state) => ({
+            phase: "watch",
+            playerSequence: [],
+            currentPattern: MANUAL_PATTERNS[state.level - 1] || [],
+        })),
+
+    submitRecallInput: (id) =>
+        set((state) => {
+            if (state.phase !== "recall") return {};
+
+            const expectedId = state.currentPattern[state.playerSequence.length];
+            const nextPlayerSequence = [...state.playerSequence, id];
+
+            if (id !== expectedId) {
+                return {
+                    phase: "failed",
+                    playerSequence: nextPlayerSequence,
+                };
+            }
+
+            const levelComplete =
+                nextPlayerSequence.length === state.currentPattern.length;
+
+            if (!levelComplete) {
+                return { playerSequence: nextPlayerSequence };
+            }
+
+            const nextLevel = state.level + 1;
+            const nextPattern = MANUAL_PATTERNS[nextLevel - 1];
+
+            if (!nextPattern) {
+                return {
+                    phase: "completed",
+                    playerSequence: nextPlayerSequence,
+                };
+            }
+
+            return {
+                phase: "watch",
+                level: nextLevel,
+                currentPattern: nextPattern,
+                playerSequence: [],
+            };
+        }),
 }));
