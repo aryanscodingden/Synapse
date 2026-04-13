@@ -7,6 +7,23 @@ const MANUAL_PATTERNS = [
     [4, 8, 9, 13, 12, 0],
 ];
 
+const COLORS = [
+    "#ff4d4d",
+    "#4dff88",
+    "#4da6ff",
+    "#ffd24d",
+    "#ff66cc",
+    "#66ffff",
+    "#ffa64d",
+    "#b366ff",
+];
+
+const buildPattern = (ids) =>
+    ids.map((id) => ({
+        id,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    }));
+
 export const useGameState = create((set) => ({
     phase: "idle",
     level: 1,
@@ -20,7 +37,7 @@ export const useGameState = create((set) => ({
         set({
             phase: "watch",
             level: 1,
-            currentPattern: MANUAL_PATTERNS[0],
+            currentPattern: buildPattern(MANUAL_PATTERNS[0]),
             playerSequence: [],
         }),
 
@@ -28,17 +45,19 @@ export const useGameState = create((set) => ({
         set((state) => ({
             phase: "watch",
             playerSequence: [],
-            currentPattern: MANUAL_PATTERNS[state.level - 1] || [],
+            currentPattern: buildPattern(
+                MANUAL_PATTERNS[state.level - 1] || [],
+            ),
         })),
 
     submitRecallInput: (id) =>
         set((state) => {
             if (state.phase !== "recall") return {};
 
-            const expectedId = state.currentPattern[state.playerSequence.length];
+            const expectedStep = state.currentPattern[state.playerSequence.length];
             const nextPlayerSequence = [...state.playerSequence, id];
 
-            if (id !== expectedId) {
+            if (!expectedStep || id !== expectedStep.id) {
                 return {
                     phase: "failed",
                     playerSequence: nextPlayerSequence,
@@ -53,9 +72,9 @@ export const useGameState = create((set) => ({
             }
 
             const nextLevel = state.level + 1;
-            const nextPattern = MANUAL_PATTERNS[nextLevel - 1];
+            const nextPatternIds = MANUAL_PATTERNS[nextLevel - 1];
 
-            if (!nextPattern) {
+            if (!nextPatternIds) {
                 return {
                     phase: "completed",
                     playerSequence: nextPlayerSequence,
@@ -65,7 +84,7 @@ export const useGameState = create((set) => ({
             return {
                 phase: "watch",
                 level: nextLevel,
-                currentPattern: nextPattern,
+                currentPattern: buildPattern(nextPatternIds),
                 playerSequence: [],
             };
         }),

@@ -9,7 +9,7 @@ export default function Grid() {
     const phase = useGameState((s) => s.phase);
     const currentPattern = useGameState((s) => s.currentPattern);
     const setPhase = useGameState((s) => s.setPhase);
-    const submitRecallInput = useGameState((s) => s.submitRecallInput);
+    const submitRecallInput =  useGameState((s) => s.submitRecallInput);
 
     const [activeNode, setActiveNode] = useState(null);
     const [activeColor, setActiveColor] = useState("#4da6ff");
@@ -20,11 +20,11 @@ export default function Grid() {
         let cancelled = false;
 
         const playPattern = async () => {
-            for (const id of currentPattern) {
+            for (const step of currentPattern) {
                 if (cancelled) return;
 
-                setActiveNode(id);
-                setActiveColor("#4da6ff");
+                setActiveNode(step.id);
+                setActiveColor(step.color);
                 await sleep(320);
 
                 setActiveNode(null);
