@@ -7,11 +7,22 @@ export function generateSequence(length) {
         "#b517b5",
         "#66ffff",
         "#b366ff",
-    ];
+    ]
 
-    return Array.from({ length }, () => ({
-        id: Math.floor(Math.random() * 16),
-        color: colors[Math.floor(Math.random() * colors.length)],
-        duration: 300 + Math.random() * 600,
-    }));
-}
+    const used = new Set();
+
+    return Array.from({length}, () => {
+        let id; 
+        do {
+            id = Math.floor(Math.random() * 16);
+        } while (used.has(id));
+
+        used.add(id);
+
+        return {
+            id, 
+            color: colors[Math.floor(Math.random() * colors.length)],
+            duration: 300 + Math.random() * 600, 
+        };
+    });
+};

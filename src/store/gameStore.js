@@ -1,11 +1,7 @@
 import { create } from "zustand";
 
-const MANUAL_PATTERNS = [
-    [0, 5, 10],
-    [3, 7, 11, 15],
-    [1, 2, 6, 10, 14],
-    [4, 8, 9, 13, 12, 0],
-];
+const LEVEL_LENGTHS = [3, 4, 5, 6];
+const GRID_SIZE = 16;
 
 const COLORS = [
     "#ff4d4d",
@@ -18,43 +14,75 @@ const COLORS = [
     "#b366ff",
 ];
 
-const buildPattern = (ids) =>
-    ids.map((id) => ({
-        id,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    }));
+const buildRandomPattern = (length) => {
+    const used = new Set();
+    const pattern = [];
+
+    while (pattern.length < length) {
+        const id = Math.floor(Math.random() * GRID_SIZE);
+        if (used.has(id)) continue;
+        used.add(id);
+
+        pattern.push({
+            id,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        });
+    }
+
+    return pattern;
+};
 
 export const useGameState = create((set) => ({
+    mode: null,
     phase: "idle",
     level: 1,
-    totalLevels: MANUAL_PATTERNS.length,
+    totalLevels: LEVEL_LENGTHS.length,
     currentPattern: [],
     playerSequence: [],
-
+    reaction: {
+        activeTarget: null,
+        startTime: null,
+        times: [],
+        round: 0,
+        totalRounds: 10,
+    },
     setPhase: (phase) => set({ phase }),
 
     startGame: () =>
         set({
+            mode: "recall",
             phase: "watch",
             level: 1,
-            currentPattern: buildPattern(MANUAL_PATTERNS[0]),
+            currentPattern: buildRandomPattern(LEVEL_LENGTHS[0]),
             playerSequence: [],
+            reaction: {
+                activeTarget: null,
+                startTime: null,
+                times: [],
+                round: 0,
+                totalRounds: 10,
+            },
         }),
 
     retryLevel: () =>
         set((state) => ({
+            mode: "recall",
             phase: "watch",
+            currentPattern: buildRandomPattern(LEVEL_LENGTHS[state.level - 1] || 0),
             playerSequence: [],
-            currentPattern: buildPattern(
-                MANUAL_PATTERNS[state.level - 1] || [],
-            ),
+            reaction: {
+                ...state.reaction,
+                activeTarget: null,
+                startTime: null,
+            },
         })),
 
     submitRecallInput: (id) =>
         set((state) => {
             if (state.phase !== "recall") return {};
 
-            const expectedStep = state.currentPattern[state.playerSequence.length];
+            const expectedStep =
+                state.currentPattern[state.playerSequence.length];
             const nextPlayerSequence = [...state.playerSequence, id];
 
             if (!expectedStep || id !== expectedStep.id) {
@@ -72,9 +100,9 @@ export const useGameState = create((set) => ({
             }
 
             const nextLevel = state.level + 1;
-            const nextPatternIds = MANUAL_PATTERNS[nextLevel - 1];
+            const nextPatternLength = LEVEL_LENGTHS[nextLevel - 1];
 
-            if (!nextPatternIds) {
+            if (!nextPatternLength) {
                 return {
                     phase: "completed",
                     playerSequence: nextPlayerSequence,
@@ -84,8 +112,64 @@ export const useGameState = create((set) => ({
             return {
                 phase: "watch",
                 level: nextLevel,
-                currentPattern: buildPattern(nextPatternIds),
+                currentPattern: buildRandomPattern(nextPatternLength),
                 playerSequence: [],
+            };
+        }),
+    startReactionGame: () =>
+        set({
+            mode: "reaction",
+            phase: "playing",
+            reaction: {
+                activeTarget: null,
+                startTime: null,
+                times: [],
+                round: 0,
+                totalRounds: 10,
+            },
+        }),
+
+    spawnTarget: (id) =>
+        set((state) => ({
+            reaction: {
+                ...state.reaction,
+                activeTarget: id,
+                startTime: performance.now(),
+            },
+        })),
+
+    handleReactionClick: (id) =>
+        set((state) => {
+            const { activeTarget, startTime, times, round, totalRounds } =
+                state.reaction;
+
+            if (id !== activeTarget || startTime == null) return {};
+
+            const reactionTime = performance.now() - startTime;
+            const newTimes = [...times, reactionTime];
+            const nextRound = round + 1;
+
+            if (nextRound >= totalRounds) {
+                return {
+                    phase: "result",
+                    reaction: {
+                        ...state.reaction,
+                        times: newTimes,
+                        round: nextRound,
+                        activeTarget: null,
+                        startTime: null,
+                    },
+                };
+            }
+
+            return {
+                reaction: {
+                    ...state.reaction,
+                    times: newTimes,
+                    round: nextRound,
+                    activeTarget: null,
+                    startTime: null,
+                },
             };
         }),
 }));
