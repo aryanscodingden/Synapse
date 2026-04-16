@@ -1,35 +1,57 @@
+import { useEffect, useRef } from "react";
 import Grid from "./components/grid";
 import { useGameState } from "./store/gameStore";
 import ReactionArena from "./components/ReactionArena";
+import {
+  calcAverageMs,
+  calcBestMs,
+  calcConsistencyScore,
+} from "./utils/reactionStats";
+import { saveReactionSession } from "./utils/reactionMetricsDb";
 
 export default function App() {
   const mode = useGameState((s) => s.mode);
   const phase = useGameState((s) => s.phase);
-
   const level = useGameState((s) => s.level);
   const totalLevels = useGameState((s) => s.totalLevels);
   const currentPattern = useGameState((s) => s.currentPattern);
   const playerSequence = useGameState((s) => s.playerSequence);
   const startGame = useGameState((s) => s.startGame);
   const retryLevel = useGameState((s) => s.retryLevel);
-
   const reaction = useGameState((s) => s.reaction);
   const startReactionGame = useGameState((s) => s.startReactionGame);
+  const avg = calcAverageMs(reaction.times);
+  const best = calcBestMs(reaction.times);
+  const consistency = calcConsistencyScore(reaction.times);
+  const savedResultRef = useRef(false);
 
-  const avg =
-    reaction.times.length > 0
-      ? Math.round(
-          reaction.times.reduce((a, b) => a + b, 0) / reaction.times.length,
-        )
-      : 0;
+  useEffect(() => {
+    if (mode === "reaction" && phase === "playing") {
+      savedResultRef.current = false;
+      return;
+    }
 
-  const best =
-    reaction.times.length > 0 ? Math.round(Math.min(...reaction.times)) : 0;
+    if (mode !== "reaction" || phase !== "result") return;
+    if (savedResultRef.current) return;
+    if (reaction.times.length === 0) return;
+
+    const session = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      created_at: new Date().toISOString(),
+      reaction_time_ms: avg,
+      false_starts: reaction.falseStarts,
+      consistency,
+      times_ms: reaction.times,
+    };
+
+    saveReactionSession(session);
+    savedResultRef.current = true;
+  }, [mode, phase, reaction.times, reaction.falseStarts, avg, consistency]);
 
   const statusText =
     mode === "reaction"
       ? phase === "playing"
-        ? "Tap the blue node as fast as you can"
+        ? "Tap when green as fast as you can"
         : phase === "result"
           ? "Reaction session complete"
           : "Choose a mode"
@@ -111,6 +133,8 @@ export default function App() {
         <div className="text-center">
           <p>Average: {avg} ms</p>
           <p>Best: {best} ms</p>
+          <p>False starts: {reaction.falseStarts}</p>
+          <p>Consistency: {consistency}</p>
           <button
             onClick={startReactionGame}
             className="mt-3 bg-blue-500 text-white px-4 py-2 rounded"
@@ -122,3 +146,4 @@ export default function App() {
     </div>
   );
 }
+

@@ -32,6 +32,15 @@ const buildRandomPattern = (length) => {
     return pattern;
 };
 
+const makeDefaultReactionState = () => ({
+    activeTarget: null,
+    startTime: null, 
+    times: [],
+    round: 0,
+    totalRounds: 10, 
+    falseStarts: 0,
+});
+
 export const useGameState = create((set) => ({
     mode: null,
     phase: "idle",
@@ -39,13 +48,7 @@ export const useGameState = create((set) => ({
     totalLevels: LEVEL_LENGTHS.length,
     currentPattern: [],
     playerSequence: [],
-    reaction: {
-        activeTarget: null,
-        startTime: null,
-        times: [],
-        round: 0,
-        totalRounds: 10,
-    },
+    reaction: makeDefaultReactionState(),
     setPhase: (phase) => set({ phase }),
 
     startGame: () =>
@@ -55,13 +58,7 @@ export const useGameState = create((set) => ({
             level: 1,
             currentPattern: buildRandomPattern(LEVEL_LENGTHS[0]),
             playerSequence: [],
-            reaction: {
-                activeTarget: null,
-                startTime: null,
-                times: [],
-                round: 0,
-                totalRounds: 10,
-            },
+            reaction: makeDefaultReactionState(),
         }),
 
     retryLevel: () =>
@@ -120,14 +117,16 @@ export const useGameState = create((set) => ({
         set({
             mode: "reaction",
             phase: "playing",
-            reaction: {
-                activeTarget: null,
-                startTime: null,
-                times: [],
-                round: 0,
-                totalRounds: 10,
-            },
+            reaction: makeDefaultReactionState(),
         }),
+    
+    incrementFalseStart: () => 
+        set((state) => ({
+            reaction: {
+                ...state.reaction,
+                falseStarts: state.reaction.falseStarts + 1,
+            }
+        })),
 
     spawnTarget: (id) =>
         set((state) => ({
