@@ -1,5 +1,6 @@
 import Grid from "./components/grid";
 import { useGameState } from "./store/gameStore";
+import ReactionArena from "./components/ReactionArena";
 
 export default function App() {
   const mode = useGameState((s) => s.mode);
@@ -81,7 +82,8 @@ export default function App() {
         </button>
       )}
 
-      {mode && <Grid />}
+      {mode === "recall" && <Grid />}
+      {mode === "reaction" && <ReactionArena />}
 
       {mode === "recall" && (
         <>
