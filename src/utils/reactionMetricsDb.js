@@ -1,4 +1,4 @@
-const STORAGE_KEY = "synapse_reaction_session_v1";
+const STORAGE_KEY = "synapse_reaction_sessions_v1";
 
 function readAll() {
     if (typeof window === "undefined") return [];
@@ -6,7 +6,7 @@ function readAll() {
     if (!raw) return [];
 
     try {
-        const parse = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
         return Array.isArray(parsed) ? parsed : [];
 
     } catch {
@@ -16,7 +16,7 @@ function readAll() {
 
 function writeAll(rows) {
     if (typeof window === "undefined") return;
-    Window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
 }
 
 export function saveReactionSession(session) {

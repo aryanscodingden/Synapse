@@ -2,9 +2,9 @@ export function calcAverageMs(times) {
     if (!times || times.length === 0) return 0;
     return Math.round(times.reduce((sum, t) => sum + t, 0) / times.length);
 }
-export function calcBestMs(values, mean) {
-    if (!values || values.length === 0) return 0;
-    return Math.round(main.min(...times));
+export function calcBestMs(times) {
+    if (!times || times.length === 0) return 0;
+    return Math.round(Math.min(...times));
 }
 
 function calcStdDev(values, mean) {
@@ -25,3 +25,4 @@ export function calcConsistencyScore(times) {
 
     return Math.max(0, Math.min(100, Math.round(score)));
 }
+
