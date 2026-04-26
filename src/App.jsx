@@ -130,7 +130,7 @@ export default function App() {
       )}
 
       {mode === "reaction" && phase === "result" && (
-        <div className="text-center">
+        <div clasmsName="text-center">
           <p>Average: {avg} ms</p>
           <p>Best: {best} ms</p>
           <p>False starts: {reaction.falseStarts}</p>

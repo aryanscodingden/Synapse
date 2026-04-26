@@ -14,6 +14,10 @@ const COLORS = [
     "#b366ff",
 ];
 
+const PUZZLE_DIM = 3;
+const PUZZLE_TILE_COUNT = PUZZLE_DIM * PUZZLE_DIM;
+const PUZZLE_TEST_DURATION_MS = 90000;
+
 const buildRandomPattern = (length) => {
     const used = new Set();
     const pattern = [];
@@ -41,6 +45,46 @@ const makeDefaultReactionState = () => ({
     falseStarts: 0,
 });
 
+const buildPuzzleTarget = () => 
+    Array.from({length: PUZZLE_TILE_COUNT}, (_, i) => i + 1);
+
+const shuffle = (arr) => {
+    const out = [...arr];
+    for (let i = out.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = out[i];
+        out[i] = out[j];
+        out[j] = t;
+    }
+    return out;
+};
+
+const boardsMatch = (a, b) => 
+    a.length === b.length && a.every((v, i) => v === b[i]);
+
+const buildPuzzleBoard = (target) => {
+    let board = shuffle(target);
+    while (boardsMatch(board, target)) {
+        board = shuffle(target);
+    }
+    return board;
+};
+
+const makeDefaultPuzzleState = () => {
+    const target = buildPuzzleTarget();
+    return {
+        dim: PUZZLE_DIM,
+        board: buildPuzzleBoard(target),
+        target, 
+        moves: 0,
+        solvedCount: 0, 
+        totalShown: 1,
+        timeLeftMs: PUZZLE_TEST_DURATION_MS,
+        startedAt: null, 
+        endedAt: null,
+    };
+};
+
 export const useGameState = create((set) => ({
     mode: null,
     phase: "idle",
@@ -49,6 +93,7 @@ export const useGameState = create((set) => ({
     currentPattern: [],
     playerSequence: [],
     reaction: makeDefaultReactionState(),
+    puzzle: makeDefaultPuzzleState(),
     setPhase: (phase) => set({ phase }),
 
     startGame: () =>
@@ -168,6 +213,88 @@ export const useGameState = create((set) => ({
                     round: nextRound,
                     activeTarget: null,
                     startTime: null,
+                },
+            };
+        }),
+
+    startPuzzleGame: () => 
+        set(() => {
+            const puzzle = makeDefaultPuzzleState();
+            puzzle.startedAt = performance.now();
+
+            return {
+                mode: "puzzle",
+                phase: "playing",
+                puzzle,
+            };
+        }),
+
+    tickPuzzleTimer: (deltaMs) =>
+        set((state) => {
+            if (state.mode !== "puzzle" || state.phase !== "playing") return {};
+
+            const next = Math.max(0, state.puzzle.timeLeftMs - deltaMs);
+
+            if (next === 0) {
+                return {
+                    phase: "result",
+                    puzzle: {
+                        ...state.puzzle,
+                        timeLeftMs: 0,
+                        endedAt: performance.now(),
+                    },
+                };
+            }
+
+            return {
+                puzzle: {
+                    ...state.puzzle,
+                    timeLeftMs: next,
+                },
+            };
+        }),
+
+    swapPuzzleTiles: (fromIndex, toIndex) => 
+        set((state) => {
+            if (state.mode !== "puzzle" || state.phase !== "playing") return {};
+            if (fromIndex === toIndex) return {};
+
+            const size = state.puzzle.board.length;
+            if (
+                fromIndex < 0 ||
+                toIndex < 0 ||
+                fromIndex >= size ||
+                toIndex >= size
+            ) {
+                return {};
+            }
+
+            const board = [...state.puzzle.board];
+            const temp = board[fromIndex];
+            board[fromIndex] = board[toIndex];
+            board[toIndex] = temp;
+
+            const solved = boardsMatch(board, state.puzzle.target);
+
+            if (!solved) {
+                return {
+                    puzzle: {
+                        ...state.puzzle,
+                        board,
+                        moves: state.puzzle.moves + 1,
+                    },
+                };
+            }
+
+            const nextBoard = buildPuzzleBoard(state.puzzle.target);
+
+            return {
+                puzzle: {
+                    ...state.puzzle,
+                    board: nextBoard,
+                    moves: state.puzzle.moves + 1,
+                    solvedCount: state.puzzle.solvedCount + 1,
+                    totalShown: state.puzzle.totalShown + 1,
                 },
             };
         }),
