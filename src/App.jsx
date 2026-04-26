@@ -8,6 +8,7 @@ import {
   calcConsistencyScore,
 } from "./utils/reactionStats";
 import { saveReactionSession } from "./utils/reactionMetricsDb";
+import PuzzleArena from "./components/PuzzleArena";
 
 export default function App() {
   const mode = useGameState((s) => s.mode);
@@ -20,6 +21,8 @@ export default function App() {
   const retryLevel = useGameState((s) => s.retryLevel);
   const reaction = useGameState((s) => s.reaction);
   const startReactionGame = useGameState((s) => s.startReactionGame);
+  const puzzle = useGameState((s) => s.puzzle);
+  const startPuzzleGame = useGameState((s) => s.startPuzzleGame);
   const avg = calcAverageMs(reaction.times);
   const best = calcBestMs(reaction.times);
   const consistency = calcConsistencyScore(reaction.times);
@@ -83,6 +86,12 @@ export default function App() {
           >
             Reaction Mode
           </button>
+          <button
+            onClick={startPuzzleGame}
+            className="bg-emerald-600 text-white px-4 py-2 rounded"
+          >
+            Puzzle Mode
+          </button>
         </div>
       )}
 
@@ -102,6 +111,29 @@ export default function App() {
         >
           Restart
         </button>
+      )}
+
+      {mode === "puzzle" && <PuzzleArena />}
+
+      {mode === "puzzle" && (
+        <>
+          <p className="text-sm opacity-80">Solved: {puzzle.solvedCount}</p>
+          <p className="text-sm opacity-70">{statusText}</p>
+        </>
+      )}
+
+      {mode === "puzzle" && phase === "result" && (
+        <div className="text-center">
+          <p>Solved: {puzzle.solvedCount}</p>
+          <p>Total Shown: {puzzle.totalShown}</p>
+          <p>Moves: {puzzle.moves}</p>
+          <button
+            onClick={startPuzzleGame}
+            className="mt-3 bg-emerald-600 text-white px-4 py-2 rounded"
+          >
+            Play Again
+          </button>
+        </div>
       )}
 
       {mode === "recall" && <Grid />}
@@ -130,7 +162,7 @@ export default function App() {
       )}
 
       {mode === "reaction" && phase === "result" && (
-        <div clasmsName="text-center">
+        <div className="text-center">
           <p>Average: {avg} ms</p>
           <p>Best: {best} ms</p>
           <p>False starts: {reaction.falseStarts}</p>

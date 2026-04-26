@@ -17,6 +17,16 @@ const COLORS = [
 const PUZZLE_DIM = 3;
 const PUZZLE_TILE_COUNT = PUZZLE_DIM * PUZZLE_DIM;
 const PUZZLE_TEST_DURATION_MS = 90000;
+const PUZZLE_IMAGE_POOL = [
+    "/1.jpg",
+    "/2.jpg",
+    "/3.png",
+    "/4.webp",
+    "/5.webp",
+];
+const getRandomPuzzleImage = () => 
+    PUZZLE_IMAGE_POOL[Math.floor(Math.random() *
+    PUZZLE_IMAGE_POOL.length)];
 
 const buildRandomPattern = (length) => {
     const used = new Set();
@@ -32,7 +42,6 @@ const buildRandomPattern = (length) => {
             color: COLORS[Math.floor(Math.random() * COLORS.length)],
         });
     }
-
     return pattern;
 };
 
@@ -76,8 +85,9 @@ const makeDefaultPuzzleState = () => {
         dim: PUZZLE_DIM,
         board: buildPuzzleBoard(target),
         target, 
+        imageSrc: getRandomPuzzleImage(),
         moves: 0,
-        solvedCount: 0, 
+        solvedCount: 0,
         totalShown: 1,
         timeLeftMs: PUZZLE_TEST_DURATION_MS,
         startedAt: null, 
