@@ -58,15 +58,15 @@ export default function App() {
         : phase === "result"
           ? "Reaction session complete"
           : "Choose a mode"
-      : phase === "idle"
-        ? "Press Recall Mode"
-        : phase === "watch"
+      : mode === "recall"
+        ? phase === "watch"
           ? "Memorize the pattern"
           : phase === "recall"
             ? "Repeat the same nodes"
             : phase === "failed"
               ? "Wrong node. Try this level again."
-              : "You completed all levels!";
+              : "You completed all levels!"
+        : "";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6">

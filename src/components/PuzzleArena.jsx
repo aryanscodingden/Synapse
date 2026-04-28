@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useGameState } from "../store/gameStore";
 
 function formatSeconds(ms) {
@@ -23,24 +23,24 @@ function tileImageStyle(tileValue, dim, imageSrc) {
   };
 }
 
-function beep(type="ok") {
-    try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+function beep(type = "ok") {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-        osc.type === "ok" ? "triangle" : "sawtooth";
-        osc.frequency.value = type === "ok" ? 820 : 220;
-        gain.gain.value = 0.045;
+    osc.type = type === "ok" ? "triangle" : "sawtooth";
+    osc.frequency.value = type === "ok" ? 820 : 220;
+    gain.gain.value = 0.045;
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + (type === "ok" ? 0.09 : 0.07));
-    } catch {
-        // NA
-    }
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + (type === "ok" ? 0.09 : 0.07));
+  } catch {
+    // NA
+  }
 }
 
 export default function PuzzleArena() {
@@ -50,20 +50,12 @@ export default function PuzzleArena() {
   const tickPuzzleTimer = useGameState((s) => s.tickPuzzleTimer);
   const swapPuzzleTiles = useGameState((s) => s.swapPuzzleTiles);
 
-  const [dragIndex, setDragIndex] = useState(null);
-
-  const totalTiles = dim * dim;
-  const [slots, setSlots] = useState([]);
-  const [pool, setPool] = useState([]);
-  const [moves, setMoves] = useState(0);
-  const [dragTile, setDragTile] = useState(null);
-
   const dim = Number.isFinite(puzzle?.dim) ? puzzle.dim : 3;
   const board = Array.isArray(puzzle?.board) ? puzzle.board : [];
   const imageSrc = puzzle?.imageSrc || "";
   const timeLeftMs = Number.isFinite(puzzle?.timeLeftMs) ? puzzle.timeLeftMs : 0;
-  const solvedCount = Number.isFinite(puzzle?.solvedCount) ? puzzle.solvedCount : 0;
-  const moves = Number.isFinite(puzzle?.moves) ? puzzle.moves : 0;
+
+  const totalTiles = dim * dim;
 
   useEffect(() => {
     if (mode !== "puzzle" || phase !== "playing") return;
@@ -75,72 +67,80 @@ export default function PuzzleArena() {
     return () => window.clearInterval(id);
   }, [mode, phase, tickPuzzleTimer]);
 
-  useEffect(() => {
-    const startPool = 
-        board.length === totalTiles
-        ? [...board]
-        : Array.from({length: totalTiles}, (_, i) => i + 1);
-
-    setPool(startPool);
-    setSlots(Array.from({length: totalTiles}, () => null));
-    setMoves(0);
-    setDragIndex(null);
-  }, [imageSrc, totalTiles, board]);
-
-  const placedCount = useMemo(
-    () => slots.reduce((n, v) => (v == null ? n : n + 1), 0),
-    [slots]
-  );
-
-  useEffect(() => {
-    if (phase !== "playing") return;
-    
-  })
-
-  const onDrop = (toIndex) => {
-    if (!Number.isInteger(dragIndex)) return;
+  const onDropToSlot = (fromIndex, toIndex) => {
+    if (!Number.isInteger(fromIndex)) return;
     if (!Number.isInteger(toIndex)) return;
-    if (dragIndex === toIndex) {
-      setDragIndex(null);
-      return;
-    }
-
-    swapPuzzleTiles(dragIndex, toIndex);
-    setDragIndex(null);
+    if (fromIndex === toIndex) return;
+    swapPuzzleTiles(fromIndex, toIndex);
   };
 
+  // const onPoolTileDragStart = (e, tileValue) => {
+  //   e.dataTransfer.setData("tileId", String(tileValue));
+  // };
+
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-sm opacity-70">
-        Drag any tile onto another tile to swap
-      </p>
-
-
+    <div className="flex flex-col items-center gap-4 p-4">
       <div
-        className="grid gap-3"
+        className="border-4 border-white/50 rounded-lg p-3 bg-white/5"
         style={{
-            width: "min(94vw, 720px)",
-            gridTemplateColumns: `repeat(${dim}, minmax(0,1fr))`
+          width: "min(94vw, 760px)",
         }}
       >
-        {board.map((tile, index) => (
-          <div
-            key={`${index}-${tile}`}
-            draggable
-            onDragStart={() => setDragIndex(index)}
-            onDragEnd={() => setDragIndex(null)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => onDrop(index)}
-            className="aspect-square w-full rounded-xl border border-white/25 bh-white/5 p-4 shadow-lg"
-            style={tileImageStyle(tile, dim, imageSrc)}
-          />
-        ))}
+        <div
+          className="grid gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))`,
+            aspectRatio: "1",
+          }}
+        >
+          {Array.from({ length: totalTiles }, (_, i) => {
+            const tile = board[i];
+            return (
+              <div
+                key={`slot-${i}`}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("fromIndex", String(i));
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const fromIndex = Number(e.dataTransfer.getData("fromIndex"));
+                  onDropToSlot(fromIndex, i);
+                }}
+                className="aspect-square border border-white/30 rounded-lg bg-white/5 cursor-grab active:cursor-grabbing"
+                style={tile != null ? tileImageStyle(tile, dim, imageSrc) : {}}
+              />
+            );
+          })}
+        </div>
       </div>
 
-      <div className="text-center text-sm opacity-80">
-        <p>Time left: {formatSeconds(timeLeftMs)}s</p>
-        <p>Solved: {solvedCount}</p>
-        <p>Moves: {moves}</p>
+      {/*
+      <div>
+        <p className="text-xs opacity-60 mb-2">Drag tiles to correct positions:</p>
+        <div
+          className="grid gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${Math.min(dim, 5)}, minmax(0, 1fr))`,
+          }}
+        >
+          {pool.map((tile) => (
+            <div
+              key={`pool-${tile}`}
+              draggable
+              onDragStart={(e) => onPoolTileDragStart(e, tile)}
+              className="aspect-square border-2 border-white/50 rounded-lg cursor-grab active:cursor-grabbing shadow-lg"
+              style={tileImageStyle(tile, dim, imageSrc)}
+            />
+          ))}
+        </div>
+      </div>
+      */}
+
+      <div className="text-center text-sm opacity-80 mt-2">
+        <p>Time: {formatSeconds(timeLeftMs)}</p>
+        <p>Moves: {puzzle?.moves ?? 0}</p>
       </div>
     </div>
   );
