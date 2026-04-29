@@ -66,6 +66,10 @@ export default function App() {
             : phase === "failed"
               ? "Wrong node. Try this level again."
               : "You completed all levels!"
+        : mode === "puzzle"
+          ? phase === "playing"
+            ? "Rebuild the image before the timer runs out."
+            : "Puzzle session complete"
         : "";
 
   return (
@@ -178,4 +182,3 @@ export default function App() {
     </div>
   );
 }
-

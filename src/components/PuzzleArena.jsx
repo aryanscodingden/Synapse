@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGameState } from "../store/gameStore";
 
 function formatSeconds(ms) {
@@ -23,26 +23,6 @@ function tileImageStyle(tileValue, dim, imageSrc) {
   };
 }
 
-function beep(type = "ok") {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = type === "ok" ? "triangle" : "sawtooth";
-    osc.frequency.value = type === "ok" ? 820 : 220;
-    gain.gain.value = 0.045;
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + (type === "ok" ? 0.09 : 0.07));
-  } catch {
-    // NA
-  }
-}
-
 export default function PuzzleArena() {
   const mode = useGameState((s) => s.mode);
   const phase = useGameState((s) => s.phase);
@@ -50,41 +30,66 @@ export default function PuzzleArena() {
   const tickPuzzleTimer = useGameState((s) => s.tickPuzzleTimer);
   const swapPuzzleTiles = useGameState((s) => s.swapPuzzleTiles);
 
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const lastTickRef = useRef(null);
+
   const dim = Number.isFinite(puzzle?.dim) ? puzzle.dim : 3;
   const board = Array.isArray(puzzle?.board) ? puzzle.board : [];
   const imageSrc = puzzle?.imageSrc || "";
   const timeLeftMs = Number.isFinite(puzzle?.timeLeftMs) ? puzzle.timeLeftMs : 0;
-
+  const isPlaying = mode === "puzzle" && phase === "playing";
   const totalTiles = dim * dim;
 
   useEffect(() => {
-    if (mode !== "puzzle" || phase !== "playing") return;
+    if (!isPlaying) {
+      lastTickRef.current = null;
+      return;
+    }
+
+    lastTickRef.current = performance.now();
 
     const id = window.setInterval(() => {
-      tickPuzzleTimer(100);
+      const now = performance.now();
+      const previous = lastTickRef.current ?? now;
+      lastTickRef.current = now;
+      tickPuzzleTimer(now - previous);
     }, 100);
 
-    return () => window.clearInterval(id);
-  }, [mode, phase, tickPuzzleTimer]);
+    return () => {
+      window.clearInterval(id);
+      lastTickRef.current = null;
+    };
+  }, [isPlaying, tickPuzzleTimer]);
 
-  const onDropToSlot = (fromIndex, toIndex) => {
-    if (!Number.isInteger(fromIndex)) return;
-    if (!Number.isInteger(toIndex)) return;
+  const onSwapRequest = (fromIndex, toIndex) => {
+    if (!isPlaying) return;
+    if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return;
     if (fromIndex === toIndex) return;
     swapPuzzleTiles(fromIndex, toIndex);
+    setSelectedIndex(null);
   };
 
-  // const onPoolTileDragStart = (e, tileValue) => {
-  //   e.dataTransfer.setData("tileId", String(tileValue));
-  // };
+  const onTilePress = (index) => {
+    if (!isPlaying) return;
+
+    if (selectedIndex === null) {
+      setSelectedIndex(index);
+      return;
+    }
+
+    if (selectedIndex === index) {
+      setSelectedIndex(null);
+      return;
+    }
+
+    onSwapRequest(selectedIndex, index);
+  };
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <div
         className="border-4 border-white/50 rounded-lg p-3 bg-white/5"
-        style={{
-          width: "min(94vw, 760px)",
-        }}
+        style={{ width: "min(94vw, 760px)" }}
       >
         <div
           className="grid gap-2"
@@ -95,52 +100,52 @@ export default function PuzzleArena() {
         >
           {Array.from({ length: totalTiles }, (_, i) => {
             const tile = board[i];
+            const isSelected = selectedIndex === i;
+
             return (
-              <div
+              <button
                 key={`slot-${i}`}
-                draggable
+                type="button"
+                draggable={isPlaying}
+                onClick={() => onTilePress(i)}
                 onDragStart={(e) => {
+                  if (!isPlaying) return;
                   e.dataTransfer.setData("fromIndex", String(i));
                 }}
-                onDragOver={(e) => e.preventDefault()}
+                onDragOver={(e) => {
+                  if (isPlaying) e.preventDefault();
+                }}
                 onDrop={(e) => {
+                  if (!isPlaying) return;
                   e.preventDefault();
                   const fromIndex = Number(e.dataTransfer.getData("fromIndex"));
-                  onDropToSlot(fromIndex, i);
+                  onSwapRequest(fromIndex, i);
                 }}
-                className="aspect-square border border-white/30 rounded-lg bg-white/5 cursor-grab active:cursor-grabbing"
+                className={`aspect-square rounded-lg border bg-white/5 outline-none transition ${
+                  isSelected
+                    ? "border-emerald-300 ring-2 ring-emerald-400/70"
+                    : "border-white/30"
+                } ${
+                  isPlaying
+                    ? "cursor-pointer active:scale-[0.98]"
+                    : "cursor-default"
+                }`}
                 style={tile != null ? tileImageStyle(tile, dim, imageSrc) : {}}
+                aria-label={`Puzzle tile ${tile ?? i + 1}`}
               />
             );
           })}
         </div>
       </div>
 
-      {/*
-      <div>
-        <p className="text-xs opacity-60 mb-2">Drag tiles to correct positions:</p>
-        <div
-          className="grid gap-2"
-          style={{
-            gridTemplateColumns: `repeat(${Math.min(dim, 5)}, minmax(0, 1fr))`,
-          }}
-        >
-          {pool.map((tile) => (
-            <div
-              key={`pool-${tile}`}
-              draggable
-              onDragStart={(e) => onPoolTileDragStart(e, tile)}
-              className="aspect-square border-2 border-white/50 rounded-lg cursor-grab active:cursor-grabbing shadow-lg"
-              style={tileImageStyle(tile, dim, imageSrc)}
-            />
-          ))}
-        </div>
-      </div>
-      */}
-
       <div className="text-center text-sm opacity-80 mt-2">
         <p>Time: {formatSeconds(timeLeftMs)}</p>
         <p>Moves: {puzzle?.moves ?? 0}</p>
+        {isPlaying && (
+          <p className="opacity-70">
+            Tap two tiles to swap, or drag one tile onto another.
+          </p>
+        )}
       </div>
     </div>
   );

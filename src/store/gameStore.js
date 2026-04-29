@@ -28,6 +28,15 @@ const getRandomPuzzleImage = () =>
     PUZZLE_IMAGE_POOL[Math.floor(Math.random() *
     PUZZLE_IMAGE_POOL.length)];
 
+const getNextPuzzleImage = (current) => {
+        if (PUZZLE_IMAGE_POOL.length <= 1) return current || getRandomPuzzleImage();
+
+        const choices = PUZZLE_IMAGE_POOL.filter((src) => src !== current);
+    return choices[Math.floor(Math.random() * choices.length)];
+}
+
+
+
 const buildRandomPattern = (length) => {
     const used = new Set();
     const pattern = [];
@@ -243,7 +252,8 @@ export const useGameState = create((set) => ({
         set((state) => {
             if (state.mode !== "puzzle" || state.phase !== "playing") return {};
 
-            const next = Math.max(0, state.puzzle.timeLeftMs - deltaMs);
+            const step = Number.isFinite(deltaMs) && deltaMs > 0 ? deltaMs : 0;
+            const next = Math.max(0, state.puzzle.timeLeftMs - step);
 
             if (next === 0) {
                 return {
@@ -278,7 +288,6 @@ export const useGameState = create((set) => ({
             ) {
                 return {};
             }
-
             const board = [...state.puzzle.board];
             const temp = board[fromIndex];
             board[fromIndex] = board[toIndex];
@@ -297,13 +306,15 @@ export const useGameState = create((set) => ({
             }
 
             const nextBoard = buildPuzzleBoard(state.puzzle.target);
+            const nextImageSrc = getNextPuzzleImage(state.puzzle.imageSrc);
 
             return {
                 puzzle: {
                     ...state.puzzle,
                     board: nextBoard,
+                    imageSrc: nextImageSrc,
                     moves: state.puzzle.moves + 1,
-                    solvedCount: state.puzzle.solvedCount + 1,
+                    solvedCount: state.puzzle.solvedCount + 1, 
                     totalShown: state.puzzle.totalShown + 1,
                 },
             };
